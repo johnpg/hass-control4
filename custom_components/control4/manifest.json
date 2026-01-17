@@ -11,7 +11,7 @@
   ],
   "codeowners": ["@lawtancool"],
   "iot_class": "local_push",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "issue_tracker": "https://github.com/lawtancool/hass-control4/issues",
   "dependencies": [],
   "platforms": ["light", "alarm_control_panel", "binary_sensor", "lock", "media_player", "switch", "fan", "climate", "cover"]
