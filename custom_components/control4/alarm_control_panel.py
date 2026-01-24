@@ -258,7 +258,7 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
     @property
     def alarm_state(self) -> AlarmControlPanelState | None:
         """Return the state of the device."""
-        partition_state = self.extra_state_attributes[CONTROL4_PARTITION_STATE_VAR]
+        partition_state = self.extra_state_attributes.get(CONTROL4_PARTITION_STATE_VAR)
         if partition_state == CONTROL4_EXIT_DELAY_STATE:
             return AlarmControlPanelState.ARMING
         if partition_state == CONTROL4_ENTRY_DELAY_STATE:
@@ -269,7 +269,7 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
         ):
             return AlarmControlPanelState.DISARMED
         if partition_state == CONTROL4_ARMED_STATE:
-            armed_type = self.extra_state_attributes[CONTROL4_ARMED_TYPE_VAR]
+            armed_type = self.extra_state_attributes.get(CONTROL4_ARMED_TYPE_VAR)
             if armed_type == self.entry_data[CONF_ALARM_AWAY_MODE]:
                 return AlarmControlPanelState.ARMED_AWAY
             if armed_type == self.entry_data[CONF_ALARM_HOME_MODE]:
@@ -280,8 +280,7 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
                 return AlarmControlPanelState.ARMED_CUSTOM_BYPASS
             if armed_type == self.entry_data[CONF_ALARM_VACATION_MODE]:
                 return AlarmControlPanelState.ARMED_VACATION
-
-        alarm_state = self.extra_state_attributes[CONTROL4_ALARM_TYPE_VAR]
+        alarm_state = self.extra_state_attributes.get(CONTROL4_ALARM_TYPE_VAR)
         if alarm_state:
             return AlarmControlPanelState.TRIGGERED
 
