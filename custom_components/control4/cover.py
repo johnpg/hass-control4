@@ -139,14 +139,12 @@ class Control4Cover(Control4Entity, CoverEntity):
 	async def async_open_cover(self, **kwargs: Any) -> None:
 		"""Open the cover."""
 		c4_blind = self.create_api_object()
-		# Some drivers respond better to explicit level targeting
-		await c4_blind.setLevelTarget(100)
+		await c4_blind.open()
 
 	async def async_close_cover(self, **kwargs: Any) -> None:
 		"""Close the cover."""
 		c4_blind = self.create_api_object()
-		# Use explicit target to maximize compatibility
-		await c4_blind.setLevelTarget(0)
+		await c4_blind.close()
 
 	async def async_set_cover_position(self, **kwargs: Any) -> None:
 		"""No-op in stateless mode (no position slider)."""
