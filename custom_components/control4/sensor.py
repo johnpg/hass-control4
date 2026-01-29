@@ -67,7 +67,7 @@ async def async_setup_entry(
             item_area = item["roomName"]
             item_parent_id = item["parentId"]
 
-            # Récupère les attrs de l'item (pas du parent)
+            # Get the item's attrs (not the parent)
             attrs = await director_get_entry_variables(hass, entry, item_id)
 
             for sm in SENSORS:
@@ -97,7 +97,7 @@ async def async_setup_entry(
 
 
 class Control4AttrSensor(Control4Entity, SensorEntity):
-    """Capteur exposant un attribut de l'équipement Control4 via WebSocket."""
+    """Sensor exposing a Control4 device attribute via WebSocket."""
 
     _attr_has_entity_name = True
     _attr_should_poll = False 
@@ -136,18 +136,17 @@ class Control4AttrSensor(Control4Entity, SensorEntity):
         self._attr_state_class = sensor_map.state_class
 
     async def async_added_to_hass(self) -> None:
-        """S'abonner au WebSocket existant."""
+        """Subscribe to the existing WebSocket."""
         await super().async_added_to_hass()
-        # Le WebSocket est déjà géré par Control4Entity parent
-        # Pas besoin d'actions supplémentaires !
-
+        # The WebSocket is already handled by the parent Control4Entity
+        # No further action required
     @property
     def available(self) -> bool:
         return super().available and (self._sm.key in self.extra_state_attributes)
 
     @property
     def native_value(self):
-        """Récupère la valeur depuis extra_state_attributes (mis à jour par WebSocket)."""
+        """Retrieve the value from extra_state_attributes (updated by WebSocket)."""
         raw = self.extra_state_attributes.get(self._sm.key)
         if raw is None:
             return None
