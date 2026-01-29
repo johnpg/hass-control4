@@ -74,6 +74,7 @@ PLATFORMS = [
     Platform.FAN,
     Platform.CLIMATE,
     Platform.COVER,
+    Platform.SENSOR,
 ]
 
 
