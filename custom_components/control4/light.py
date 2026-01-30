@@ -30,7 +30,8 @@ _LOGGER = logging.getLogger(__name__)
 
 CONTROL4_CATEGORY = "lights"
 CONTROL4_BRIGHTNESS_SCALE = (1, 100)
-
+CONTROL4_COLOR_MODE_CCT = 1
+CONTROL4_COLOR_MODE_XY = 0
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -124,8 +125,6 @@ class Control4Light(Control4Entity, LightEntity):
         self._ct_max: int | None = None
         self._rate_min: int | None = None
         self._rate_max: int | None = None
-        self._cached_xy: tuple[float, float] | None = None
-        self._cached_ct: int | None = None
         self._effects_by_name: dict[str, dict[str, Any]] = {}
         self._current_effect: str | None = None
         
@@ -165,8 +164,8 @@ class Control4Light(Control4Entity, LightEntity):
 
             colors = setup.get("colors") or {}
             if self._supports_ct:
-                self._ct_min = (colors.get("color_correlated_temperature_min") or 2000)
-                self._ct_max = (colors.get("color_correlated_temperature_max") or 6500)
+                self._ct_min = (colors.get("color_correlated_temperature_min") or None)
+                self._ct_max = (colors.get("color_correlated_temperature_max") or None)
                 
                 self._attr_min_color_temp_kelvin = int(self._ct_min)
                 self._attr_max_color_temp_kelvin = int(self._ct_max)
@@ -242,14 +241,11 @@ class Control4Light(Control4Entity, LightEntity):
             
     @property
     def color_temp_kelvin(self) -> int | None:
-        if self._cached_ct is not None:
-            return self._cached_ct
-
         attrs = self.extra_state_attributes
         mode = attrs.get("light_color_current_color_mode")
         cct = attrs.get("light_color_current_color_correlated_temperature")
 
-        if int(mode) == 1:
+        if int(mode) == CONTROL4_COLOR_MODE_CCT and cct is not None:
             ct = int(cct)
             return ct
         return None
@@ -291,9 +287,9 @@ class Control4Light(Control4Entity, LightEntity):
         mode = attrs.get("light_color_current_color_mode")
         try:
             mode_i = int(mode)
-            if mode_i == 1:
+            if mode_i == CONTROL4_COLOR_MODE_CCT:
                 return ColorMode.COLOR_TEMP
-            if mode_i == 0:
+            if mode_i == CONTROL4_COLOR_MODE_XY:
                 return ColorMode.XY
         except: 
             if self._attr_color_mode in (self._attr_supported_color_modes or set()):
@@ -302,8 +298,6 @@ class Control4Light(Control4Entity, LightEntity):
             
     @property
     def xy_color(self) -> tuple[float, float] | None:
-        if self._cached_xy is not None:
-            return self._cached_xy
         attrs = self.extra_state_attributes
         x = attrs.get("light_color_current_x")
         y = attrs.get("light_color_current_y")
@@ -349,8 +343,6 @@ class Control4Light(Control4Entity, LightEntity):
                 if self._ct_max:
                     ct_i = min(ct_i, int(self._ct_max))
                 await c4_light.setColorTemperature(ct_i, rate=transition_length)
-                self._cached_ct = ct_i
-                self._cached_xy = None
                 self._attr_color_mode = ColorMode.COLOR_TEMP
             else:
                 x = preset.get("color_x")
@@ -360,9 +352,7 @@ class Control4Light(Control4Entity, LightEntity):
                     and isinstance(x, (int, float))
                     and isinstance(y, (int, float))
                 ):
-                    await c4_light.setColorXY(float(x), float(y), rate=transition_length, mode=0)
-                    self._cached_xy = (float(x), float(y))
-                    self._cached_ct = None
+                    await c4_light.setColorXY(float(x), float(y), rate=transition_length)
                     self._attr_color_mode = ColorMode.XY
             self._current_effect = effect
             self.async_write_ha_state()
@@ -371,8 +361,7 @@ class Control4Light(Control4Entity, LightEntity):
         # ----- XY Color -----
         if ATTR_XY_COLOR in kwargs and self._supports_color:
             x, y = kwargs[ATTR_XY_COLOR]
-            await c4_light.setColorXY(float(x), float(y), rate=transition_length, mode=0)
-            self._cached_xy = (float(x), float(y))
+            await c4_light.setColorXY(float(x), float(y), rate=transition_length)
             self._current_effect = None
             self._attr_color_mode = ColorMode.XY
             self.async_write_ha_state()
@@ -386,8 +375,6 @@ class Control4Light(Control4Entity, LightEntity):
             if self._ct_max is not None:
                 ct = min(ct, int(self._ct_max))
             await c4_light.setColorTemperature(ct, rate=transition_length)
-            self._cached_ct = ct
-            self._cached_xy = None
             self._attr_color_mode = ColorMode.COLOR_TEMP
             self._current_effect = None
             self.async_write_ha_state()
