@@ -20,7 +20,7 @@ from homeassistant.components.light import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.util.color import value_to_brightness, brightness_to_value
+from homeassistant.util.color import value_to_brightness, brightness_to_value, color_hs_to_RGB
 
 from . import Control4Entity, get_items_of_category
 from .const import CONF_DIRECTOR, CONTROL4_ENTITY_TYPE, DOMAIN
@@ -126,7 +126,6 @@ class Control4Light(Control4Entity, LightEntity):
         self._rate_max: int | None = None
         self._cached_hs: tuple[float, float] | None = None
         self._cached_ct: int | None = None
-        self._last_color_mode: ColorMode | None = None
         self._effects_by_name: dict[str, dict[str, Any]] = {}
         self._current_effect: str | None = None
         
@@ -162,8 +161,7 @@ class Control4Light(Control4Entity, LightEntity):
                 setup = json.loads(setup)
 
             self._supports_color = bool(setup.get("supports_color"))
-            #self._supports_ct = bool(setup.get("supports_color_correlated_temperature"))
-            self._supports_ct = False
+            self._supports_ct = bool(setup.get("supports_color_correlated_temperature"))
 
             colors = setup.get("colors") or {}
             if self._supports_ct:
@@ -222,7 +220,9 @@ class Control4Light(Control4Entity, LightEntity):
             return self.extra_state_attributes["LIGHT_STATE"] > 0
         if "CURRENT_POWER" in self.extra_state_attributes:
             return self.extra_state_attributes["CURRENT_POWER"] > 0
-
+        # Return false if no match found
+        return False
+    
     @property
     def brightness(self):
         """Return the brightness of this light between 0..255."""
@@ -274,23 +274,6 @@ class Control4Light(Control4Entity, LightEntity):
         return features
 
     @property
-    def color_mode(self) -> ColorMode:
-        if getattr(self, "_last_color_mode", None):
-            return self._last_color_mode
-        return ColorMode.BRIGHTNESS if self._is_dimmer else ColorMode.ONOFF
-
-    @property
-    def supported_color_modes(self) -> set[ColorMode]:
-        modes: set[ColorMode] = set()
-        if self._is_dimmer:
-            modes.add(ColorMode.BRIGHTNESS)
-        if getattr(self, "_supports_color", False):
-            modes.add(ColorMode.HS)
-        if getattr(self, "_supports_ct", False):
-            modes.add(ColorMode.COLOR_TEMP)
-        return modes or {ColorMode.ONOFF}
-
-    @property
     def _is_dimmer(self):
         return bool("LIGHT_LEVEL" in self.extra_state_attributes) or bool(
             "Brightness Percent" in self.extra_state_attributes
@@ -335,7 +318,7 @@ class Control4Light(Control4Entity, LightEntity):
                 await c4_light.setColorTemperature(ct_i, rate=transition_length)
                 self._cached_ct = ct_i
                 self._cached_hs = None
-                self._last_color_mode = ColorMode.COLOR_TEMP
+                self._attr_color_mode = ColorMode.COLOR_TEMP
             else:
                 x = preset.get("color_x")
                 y = preset.get("color_y")
@@ -345,19 +328,27 @@ class Control4Light(Control4Entity, LightEntity):
                     and isinstance(y, (int, float))
                 ):
                     await c4_light.setColorXY(float(x), float(y), rate=transition_length, mode=0)
-                    self._cached_hs = None 
+                    h = preset.get("color_hue")
+                    s = preset.get("color_saturation")
+                    if isinstance(h, (int, float)) and isinstance(s, (int, float)):
+                        self._cached_hs = (float(h), float(s))
+                    else:
+                        self._cached_hs = None
+
                     self._cached_ct = None
-                    self._last_color_mode = ColorMode.HS
+                    self._attr_color_mode = ColorMode.HS
             self._current_effect = effect
+            self.async_write_ha_state()
+            return
 
         # ----- Color HS -----
         if ATTR_HS_COLOR in kwargs and self._supports_color:
             h, s = kwargs[ATTR_HS_COLOR]
-            r, g, b = self._hs_to_rgb(h, s)
+            r, g, b = color_hs_to_RGB(h, s)
             await c4_light.setColorRGB(r, g, b, rate=transition_length)
             self._cached_hs = (float(h), float(s))
             self._cached_ct = None
-            self._last_color_mode = ColorMode.HS
+            self._attr_color_mode = ColorMode.HS
             self._current_effect = None
 
         # ----- Color Temperature (Kelvin) -----
@@ -370,7 +361,7 @@ class Control4Light(Control4Entity, LightEntity):
             await c4_light.setColorTemperature(ct, rate=transition_length)
             self._cached_ct = ct
             self._cached_hs = None
-            self._last_color_mode = ColorMode.COLOR_TEMP
+            self._attr_color_mode = ColorMode.COLOR_TEMP
             self._current_effect = None
 
         # ----- 4) Brightness / On -----
@@ -397,29 +388,3 @@ class Control4Light(Control4Entity, LightEntity):
             await c4_light.rampToLevel(0, transition_length or 0)
         else:
             await c4_light.setLevel(0)
-
-    @staticmethod
-    def _hs_to_rgb(h: float, s: float) -> tuple[int, int, int]:
-        """HS(0..360, 0..100) -> RGB(0..255). V=1, brightness managed by ATTR_BRIGHTNESS."""
-        h = float(h) % 360.0
-        s = max(0.0, min(100.0, float(s))) / 100.0
-        v = 1.0
-        c = v * s
-        x = c * (1 - abs((h / 60.0) % 2 - 1))
-        m = v - c
-        if 0 <= h < 60:
-            rp, gp, bp = c, x, 0
-        elif 60 <= h < 120:
-            rp, gp, bp = x, c, 0
-        elif 120 <= h < 180:
-            rp, gp, bp = 0, c, x
-        elif 180 <= h < 240:
-            rp, gp, bp = 0, x, c
-        elif 240 <= h < 300:
-            rp, gp, bp = x, 0, c
-        else:
-            rp, gp, bp = c, 0, x
-        r = int(round((rp + m) * 255))
-        g = int(round((gp + m) * 255))
-        b = int(round((bp + m) * 255))
-        return max(0, min(255, r)), max(0, min(255, g)), max(0, min(255, b))
