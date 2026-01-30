@@ -1,4 +1,4 @@
-"""Platform for Control4 energy/power sensors."""
+"""Platform for Control4 sensors."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -14,13 +14,11 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from . import Control4Entity, get_items_of_category
-from .const import DOMAIN, CONTROL4_ENTITY_TYPE
+from . import Control4Entity
+from .const import DOMAIN, CONTROL4_ENTITY_TYPE, CONF_DIRECTOR_ALL_ITEMS
 from .director_utils import director_get_entry_variables
 
 _LOGGER = logging.getLogger(__name__)
-
-CONTROL4_CATEGORY = "lights"
 
 @dataclass
 class _SensorMap:
@@ -30,6 +28,7 @@ class _SensorMap:
     device_class: SensorDeviceClass | None
     state_class: SensorStateClass | None
     value_fn: Callable[[Any], Any] | None = None
+    proxies: set[str] | None = None
 
 SENSORS: list[_SensorMap] = [
     _SensorMap(
@@ -38,13 +37,23 @@ SENSORS: list[_SensorMap] = [
         unit="W",
         device_class=SensorDeviceClass.POWER,
         state_class=SensorStateClass.MEASUREMENT,
+        proxies={"light_v2"},
     ),
     _SensorMap(
         key="ENERGY_USED_TODAY",
         name_suffix="Energy Today",
         unit="Wh",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,  
+        state_class=SensorStateClass.TOTAL,
+        proxies={"light_v2"},
+    ),
+    _SensorMap(
+        key="ENERGY_USED",
+        name_suffix="Energy",
+        unit="Wh",
+        device_class=SensorDeviceClass.ENERGY,
+        state_class=SensorStateClass.TOTAL,
+        proxies={"light_v2"},
     ),
 ]
 
@@ -54,10 +63,10 @@ async def async_setup_entry(
 ) -> None:
     entry_data = hass.data[DOMAIN][entry.entry_id]
 
-    items_of_category = await get_items_of_category(hass, entry, CONTROL4_CATEGORY)
+    director_all_items = entry_data[CONF_DIRECTOR_ALL_ITEMS]
     entities: list[Control4AttrSensor] = []
 
-    for item in items_of_category:
+    for item in director_all_items:
         try:
             if item["type"] != CONTROL4_ENTITY_TYPE or not item.get("id"):
                 continue
@@ -71,13 +80,14 @@ async def async_setup_entry(
             attrs = await director_get_entry_variables(hass, entry, item_id)
 
             for sm in SENSORS:
-                if sm.key in attrs:
+                # Only match if the key and proxy match
+                if sm.key in attrs and (sm.proxies and item.get("proxy") in sm.proxies):
                     entities.append(
                         Control4AttrSensor(
                             entry_data=entry_data,
                             entry=entry,
-                            name=f"{item_name} {sm.name_suffix}",
-                            idx=item_id,  # Utilise l'ID de l'item
+                            name=sm.name_suffix,
+                            idx=item_id,  # Use the item's ID
                             device_name=item.get("name"),
                             device_manufacturer=item.get("manufacturer"),
                             device_model=item.get("model"),
@@ -160,4 +170,3 @@ class Control4AttrSensor(Control4Entity, SensorEntity):
             val = self._sm.value_fn(val)
             
         return val
-
