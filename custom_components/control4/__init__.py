@@ -1,4 +1,5 @@
 """The Control4 integration."""
+
 from __future__ import annotations
 
 import asyncio
@@ -70,6 +71,10 @@ PLATFORMS = [
     Platform.LOCK,
     Platform.MEDIA_PLAYER,
     Platform.SENSOR,
+    Platform.SWITCH,
+    Platform.FAN,
+    Platform.CLIMATE,
+    Platform.COVER,
 ]
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
