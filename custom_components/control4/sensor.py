@@ -44,7 +44,7 @@ SENSORS: list[_SensorMap] = [
         name_suffix="Energy Today",
         unit="Wh",
         device_class=SensorDeviceClass.ENERGY,
-        state_class=SensorStateClass.TOTAL,
+        state_class=SensorStateClass.TOTAL_INCREASING,
         proxies={"light_v2"},
     ),
     _SensorMap(
@@ -153,6 +153,8 @@ class Control4AttrSensor(Control4Entity, SensorEntity):
         self._attr_native_unit_of_measurement = sensor_map.unit
         self._attr_device_class = sensor_map.device_class
         self._attr_state_class = sensor_map.state_class
+        # Hide from entity registry by default
+        self._attr_entity_registry_visible_default = False
 
     async def async_added_to_hass(self) -> None:
         """Subscribe to the existing WebSocket."""
