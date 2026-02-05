@@ -72,9 +72,18 @@ async def async_setup_entry(
                 continue
 
             item_id = item["id"]
-            item_name = str(item["name"])
             item_area = item["roomName"]
             item_parent_id = item["parentId"]
+
+            item_manufacturer = None
+            item_device_name = None
+            item_model = None
+
+            for parent_item in director_all_items:
+                if parent_item["id"] == item_parent_id:
+                    item_manufacturer = parent_item["manufacturer"]
+                    item_device_name = parent_item["name"]
+                    item_model = parent_item["model"]
 
             # Get the item's attrs (not the parent)
             attrs = await director_get_entry_variables(hass, entry, item_id)
@@ -88,9 +97,9 @@ async def async_setup_entry(
                             entry=entry,
                             name=sm.name_suffix,
                             idx=item_id,  # Use the item's ID
-                            device_name=item.get("name"),
-                            device_manufacturer=item.get("manufacturer"),
-                            device_model=item.get("model"),
+                            device_name=item_device_name,
+                            device_manufacturer=item_manufacturer,
+                            device_model=item_model,
                             device_id=item_parent_id,
                             device_area=item_area,
                             device_attributes=attrs,
