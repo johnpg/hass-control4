@@ -1,7 +1,6 @@
 """Platform for Control4 Binary Sensor."""
 from __future__ import annotations
 
-import json
 import logging
 
 from homeassistant.components.binary_sensor import (
@@ -108,8 +107,7 @@ async def async_setup_entry(
                         _LOGGER.debug("Found device class %s for %s", item_device_class, item_name)
                         break
 
-                item_setup_info = await director.getItemSetup(item_id)
-                item_setup_info = json.loads(item_setup_info)
+                item_setup_info = await director.get_item_setup(item_id)
                 item_alarm_zone_id = None
                 if "panel_setup" in item_setup_info:
                     for key in item_setup_info["panel_setup"]["all_zones"]["zone_info"]:

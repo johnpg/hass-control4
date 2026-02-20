@@ -150,9 +150,7 @@ class Control4Light(Control4Entity, LightEntity):
             return
 
         try:
-            resp = await director.getItemSetup(self._idx)
-            if isinstance(resp, str):
-                resp = json.loads(resp)
+            resp = await director.get_item_setup(self._idx)
 
             setup = resp.get("setup", resp) if isinstance(resp, dict) else {}
 
@@ -205,7 +203,7 @@ class Control4Light(Control4Entity, LightEntity):
                         self._idx, self._supports_color, self._supports_ct, self._attr_supported_color_modes)
 
         except Exception as exc:
-            _LOGGER.debug("getItemSetup failed for %s: %s", self._idx, exc)
+            _LOGGER.debug("get_item_setup failed for %s: %s", self._idx, exc)
 
         self.async_write_ha_state()
 
@@ -342,7 +340,7 @@ class Control4Light(Control4Entity, LightEntity):
                     ct_i = max(ct_i, int(self._ct_min))
                 if self._ct_max:
                     ct_i = min(ct_i, int(self._ct_max))
-                await c4_light.setColorTemperature(ct_i, rate=transition_length)
+                await c4_light.set_color_temperature(ct_i, rate=transition_length)
                 self._attr_color_mode = ColorMode.COLOR_TEMP
             else:
                 x = preset.get("color_x")
@@ -352,7 +350,7 @@ class Control4Light(Control4Entity, LightEntity):
                     and isinstance(x, (int, float))
                     and isinstance(y, (int, float))
                 ):
-                    await c4_light.setColorXY(float(x), float(y), rate=transition_length)
+                    await c4_light.set_color_xy(float(x), float(y), rate=transition_length)
                     self._attr_color_mode = ColorMode.XY
             self._current_effect = effect
             self.async_write_ha_state()
@@ -361,7 +359,7 @@ class Control4Light(Control4Entity, LightEntity):
         # ----- XY Color -----
         if ATTR_XY_COLOR in kwargs and self._supports_color:
             x, y = kwargs[ATTR_XY_COLOR]
-            await c4_light.setColorXY(float(x), float(y), rate=transition_length)
+            await c4_light.set_color_xy(float(x), float(y), rate=transition_length)
             self._current_effect = None
             self._attr_color_mode = ColorMode.XY
             self.async_write_ha_state()
@@ -374,7 +372,7 @@ class Control4Light(Control4Entity, LightEntity):
                 ct = max(ct, int(self._ct_min))
             if self._ct_max is not None:
                 ct = min(ct, int(self._ct_max))
-            await c4_light.setColorTemperature(ct, rate=transition_length)
+            await c4_light.set_color_temperature(ct, rate=transition_length)
             self._attr_color_mode = ColorMode.COLOR_TEMP
             self._current_effect = None
             self.async_write_ha_state()
@@ -389,18 +387,18 @@ class Control4Light(Control4Entity, LightEntity):
             else:
                 # if no brightness provided but we need to "turn on"
                 brightness = 100
-            await c4_light.rampToLevel(brightness, transition_length or 0)
+            await c4_light.ramp_to_level(brightness, transition_length or 0)
         else:
             # If not dimmer but color/CCT supported, a color command may suffice
             # Otherwise we force ON
             if not (ATTR_XY_COLOR in kwargs or ATTR_COLOR_TEMP_KELVIN in kwargs or effect):
-                await c4_light.setLevel(100)
+                await c4_light.set_level(100)
 
     async def async_turn_off(self, **kwargs) -> None:
         """Turn the entity off."""
         c4_light = self.create_api_object()
         transition_length = self._to_rate_ms(kwargs.get(ATTR_TRANSITION))
         if self._is_dimmer:
-            await c4_light.rampToLevel(0, transition_length or 0)
+            await c4_light.ramp_to_level(0, transition_length or 0)
         else:
-            await c4_light.setLevel(0)
+            await c4_light.set_level(0)

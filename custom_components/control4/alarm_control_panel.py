@@ -105,8 +105,7 @@ async def async_setup_entry(
                 item_model = None
 
                 try:
-                    item_setup_info = await director.getItemSetup(item_id)
-                    item_setup_info = json.loads(item_setup_info)
+                    item_setup_info = await director.get_item_setup(item_id)
                     item_enabled = item_setup_info.get("setup", {}).get("enabled", True)
                 except (KeyError, json.JSONDecodeError):
                     _LOGGER.debug(
@@ -289,35 +288,35 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
     async def async_alarm_arm_away(self, code=None):
         """Send arm away command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_AWAY_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_AWAY_MODE])
 
     async def async_alarm_arm_home(self, code=None):
         """Send arm home command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_HOME_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_HOME_MODE])
 
     async def async_alarm_arm_night(self, code=None):
         """Send arm night command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_NIGHT_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_NIGHT_MODE])
 
     async def async_alarm_arm_custom_bypass(self, code=None):
         """Send arm custom bypass command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_CUSTOM_BYPASS_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_CUSTOM_BYPASS_MODE])
 
     async def async_alarm_arm_vacation(self, code=None):
         """Send arm vacation command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_VACATION_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_VACATION_MODE])
 
     async def async_alarm_disarm(self, code=None):
         """Send disarm command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setDisarm(code)
+        await c4_alarm.set_disarm(code or "")
 
     async def send_alarm_keystrokes(self, keystrokes):
         """Send custom keystrokes."""
         c4_alarm = self.create_api_object()
         for key in keystrokes:
-            await c4_alarm.sendKeyPress(key)
+            await c4_alarm.send_key_press(key)

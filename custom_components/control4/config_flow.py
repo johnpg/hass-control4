@@ -66,15 +66,15 @@ class Control4Validator:
             account_session = aiohttp_client.async_get_clientsession(self.hass)
             account = C4Account(self.username, self.password, account_session)
             # Authenticate with Control4 account
-            await account.getAccountBearerToken()
+            await account.get_account_bearer_token()
 
             # Get controller name
-            account_controllers = await account.getAccountControllers()
+            account_controllers = await account.get_account_controllers()
             self.controller_unique_id = account_controllers["controllerCommonName"]
 
             # Get bearer token to communicate with controller locally
             self.director_bearer_token = (
-                await account.getDirectorBearerToken(self.controller_unique_id)
+                await account.get_director_bearer_token(self.controller_unique_id)
             )["token"]
             return True
         except (Unauthorized, NotFound):
@@ -89,7 +89,7 @@ class Control4Validator:
             director = C4Director(
                 self.host, self.director_bearer_token, director_session
             )
-            await director.getAllItemInfo()
+            await director.get_all_item_info()
             return True
         except (Unauthorized, ClientError, asyncioTimeoutError):
             _LOGGER.error("Failed to connect to the Control4 controller")

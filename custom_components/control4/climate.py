@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import logging
 
 
@@ -135,8 +134,7 @@ async def async_setup_entry(
                         item_manufacturer = parent_item["manufacturer"]
                         item_device_name = parent_item["name"]
                         item_model = parent_item["model"]
-                item_setup_info = await director.getItemSetup(item_id)
-                item_setup_info = json.loads(item_setup_info)
+                item_setup_info = await director.get_item_setup(item_id)
                 _LOGGER.debug("Climate Setup: %s", str(item_setup_info))
             else:
                 continue
@@ -404,12 +402,12 @@ class Control4Climate(Control4Entity, ClimateEntity):
                     "set hvac mode with aux: %s",
                     hvac_mode,
                 )
-                await c4_climate.setHvacMode(CONTROL4_HVAC_MODE_AUX_HEAT)
+                await c4_climate.set_hvac_mode(CONTROL4_HVAC_MODE_AUX_HEAT)
             else:
-                await c4_climate.setHvacMode(CONTROL4_HVAC_MODE_HEAT)
+                await c4_climate.set_hvac_mode(CONTROL4_HVAC_MODE_HEAT)
         else:
             if hvac_mode in CONTROL4_HVAC_MODES:
-                await c4_climate.setHvacMode(CONTROL4_HVAC_MODES[hvac_mode])
+                await c4_climate.set_hvac_mode(CONTROL4_HVAC_MODES[hvac_mode])
             else:
                 _LOGGER.exception(
                     "Request for unsupported hvac mode received:: %s",
@@ -420,7 +418,7 @@ class Control4Climate(Control4Entity, ClimateEntity):
         """Set new target fan mode."""
         c4_climate = self.create_api_object()
         if fan_mode in CONTROL4_FAN_MODES:
-            await c4_climate.setFanMode(CONTROL4_FAN_MODES[fan_mode])
+            await c4_climate.set_fan_mode(CONTROL4_FAN_MODES[fan_mode])
         else:
             _LOGGER.exception(
                 "Request for unsupported fan mode received:: %s",
@@ -430,30 +428,26 @@ class Control4Climate(Control4Entity, ClimateEntity):
     async def async_set_preset_mode(self, preset_mode) -> None:
         """Set new target preset mode."""
         c4_climate = self.create_api_object()
-        await c4_climate.setHoldMode(preset_mode)
+        await c4_climate.set_hold_mode(preset_mode)
 
-    async def async_set_humidity(self, humidity) -> None:
-        """Set new target humidity."""
-        c4_climate = self.create_api_object()
-        await c4_climate.setHumidity(humidity)
 
     async def _set_cool_setpoint(self, temp) -> None:
         c4_climate = self.create_api_object()
         if self.target_temperature_step >= 1:
             temp = int(temp)
         if self.temperature_unit == UnitOfTemperature.FAHRENHEIT:
-            await c4_climate.setCoolSetpointF(temp)
+            await c4_climate.set_cool_setpoint_f(temp)
         else:
-            await c4_climate.setCoolSetpointC(temp)
+            await c4_climate.set_cool_setpoint_c(temp)
 
     async def _set_heat_setpoint(self, temp) -> None:
         c4_climate = self.create_api_object()
         if self.target_temperature_step >= 1:
             temp = int(temp)
         if self.temperature_unit == UnitOfTemperature.FAHRENHEIT:
-            await c4_climate.setHeatSetpointF(temp)
+            await c4_climate.set_heat_setpoint_f(temp)
         else:
-            await c4_climate.setHeatSetpointC(temp)
+            await c4_climate.set_heat_setpoint_c(temp)
 
     def _get_setpoint_deadband(self) -> float:
         if isinstance(self._thermostat_setup, dict):
