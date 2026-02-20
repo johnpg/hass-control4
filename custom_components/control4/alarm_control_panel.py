@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cached_property
 import json
 import logging
 
@@ -10,6 +11,8 @@ import voluptuous
 
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
+)
+from homeassistant.components.alarm_control_panel.const import (
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
     CodeFormat,
@@ -74,11 +77,12 @@ async def async_setup_entry(
     """Set up Control4 alarm control panel from a config entry."""
     # Register alarm_control_panel specific service
     platform = entity_platform.current_platform.get()
-    platform.async_register_entity_service(
-        "send_alarm_keystrokes",
-        {voluptuous.Required("keystrokes"): cv.string},
-        "send_alarm_keystrokes",
-    )
+    if platform is not None:
+        platform.async_register_entity_service(
+            "send_alarm_keystrokes",
+            {voluptuous.Required("keystrokes"): cv.string},
+            "send_alarm_keystrokes",
+        )
 
     entry_data = hass.data[DOMAIN][entry.entry_id]
 
@@ -150,7 +154,7 @@ async def async_setup_entry(
     async_add_entities(entity_list, True)
 
 
-class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
+class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):  # type: ignore[misc]
     """Control4 alarm control panel entity."""
 
     def __init__(
@@ -225,20 +229,20 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
         """
         return C4SecurityPanel(self.entry_data[CONF_DIRECTOR], self._idx)
 
-    @property
+    @cached_property
     def entity_registry_enabled_default(self) -> bool:
         """Return if the entity should be enabled when first added to the entity registry."""
         return self._is_enabled
 
-    @property
+    @cached_property
     def code_format(self):
         """Regex for code format or None if no code is required."""
         return CodeFormat.NUMBER
 
-    @property
-    def supported_features(self) -> int:
+    @cached_property
+    def supported_features(self) -> AlarmControlPanelEntityFeature:
         """Flag supported features."""
-        flags = 0
+        flags = AlarmControlPanelEntityFeature(0)
         if not self.entry_data[CONF_ALARM_AWAY_MODE] == DEFAULT_ALARM_AWAY_MODE:
             flags |= AlarmControlPanelEntityFeature.ARM_AWAY
         if not self.entry_data[CONF_ALARM_HOME_MODE] == DEFAULT_ALARM_HOME_MODE:
@@ -255,7 +259,7 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
         return flags
 
     @property
-    def alarm_state(self) -> AlarmControlPanelState | None:
+    def alarm_state(self) -> AlarmControlPanelState | None:  # type: ignore[override]
         """Return the state of the device."""
         partition_state = self.extra_state_attributes.get(CONTROL4_PARTITION_STATE_VAR)
         if partition_state == CONTROL4_EXIT_DELAY_STATE:

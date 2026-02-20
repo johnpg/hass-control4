@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from functools import cached_property
 from typing import Any
 import random
 
@@ -25,7 +26,8 @@ from homeassistant.const import (
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import aiohttp_client, device_registry as dr
-from homeassistant.helpers.entity import DeviceInfo, Entity
+from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.entity import Entity
 from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -372,7 +374,7 @@ class Control4Entity(Entity):
         device_manufacturer: str | None,
         device_model: str | None,
         device_id: int,
-        device_area: str,
+        device_area: str | None,
         device_attributes: dict,
     ) -> None:
         """Initialize a Control4 entity."""
@@ -413,7 +415,6 @@ class Control4Entity(Entity):
             self._device_id,
             self._idx,
         )
-        return True
 
     async def async_will_remove_from_hass(self) -> None:
         """Entity being removed from hass. Unregister Control4 Websockets callbacks for this entity."""
@@ -454,7 +455,7 @@ class Control4Entity(Entity):
                 else:
                     self._extra_state_attributes[key.upper()] = value
 
-    @property
+    @cached_property
     def device_info(self) -> DeviceInfo:
         """Return info of parent Control4 device of entity."""
         return DeviceInfo(
@@ -467,7 +468,7 @@ class Control4Entity(Entity):
         )
 
     @property
-    def extra_state_attributes(self) -> dict:
+    def extra_state_attributes(self) -> dict:  # type: ignore[override]
         """Return Extra state attributes."""
         return self._extra_state_attributes
 
@@ -504,7 +505,7 @@ class Control4CoordinatorEntity(CoordinatorEntity[Any]):
         self._extra_state_attributes["item id"] = idx
         self._extra_state_attributes["parent item id"] = device_id
 
-    @property
+    @cached_property
     def device_info(self) -> DeviceInfo:
         """Return info of parent Control4 device of entity."""
         return DeviceInfo(
@@ -517,7 +518,7 @@ class Control4CoordinatorEntity(CoordinatorEntity[Any]):
         )
 
     @property
-    def extra_state_attributes(self) -> dict:
+    def extra_state_attributes(self) -> dict:  # type: ignore[override]
         """Return Extra state attributes."""
         self._extra_state_attributes.update(self.coordinator.data[self._idx])
         return self._extra_state_attributes

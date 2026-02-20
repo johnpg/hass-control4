@@ -87,7 +87,7 @@ class Control4Validator:
                 self.hass, verify_ssl=False
             )
             director = C4Director(
-                self.host, self.director_bearer_token, director_session
+                self.host, self.director_bearer_token or "", director_session
             )
             await director.get_all_item_info()
             return True
@@ -130,6 +130,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             errors, controller_unique_id = await self._validate_input(user_input)
             if not errors:
+                assert controller_unique_id is not None
                 mac = (controller_unique_id.split("_", 3))[2]
                 formatted_mac = format_mac(mac)
                 data = {
@@ -155,6 +156,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             errors, controller_unique_id = await self._validate_input(user_input)
             if not errors:
+                assert controller_unique_id is not None
                 mac = (controller_unique_id.split("_", 3))[2]
                 formatted_mac = format_mac(mac)
                 data = {
@@ -165,8 +167,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
                 _LOGGER.debug("Reauthentication occurring")
                 existing_entry = await self.async_set_unique_id(formatted_mac)
-                self.hass.config_entries.async_update_entry(existing_entry, data=data)
-                await self.hass.config_entries.async_reload(existing_entry.entry_id)
+                if existing_entry is not None:
+                    self.hass.config_entries.async_update_entry(existing_entry, data=data)
+                    await self.hass.config_entries.async_reload(existing_entry.entry_id)
                 return self.async_abort(reason="reauth_successful")
 
         return self.async_show_form(

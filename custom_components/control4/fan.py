@@ -1,6 +1,7 @@
 """Platform for Control4 Fan."""
 from __future__ import annotations
 
+from functools import cached_property
 import logging
 from typing import Any
 
@@ -98,7 +99,7 @@ async def async_setup_entry(
     async_add_entities(entity_list, True)
 
 
-class Control4Fan(Control4Entity, FanEntity):
+class Control4Fan(Control4Entity, FanEntity):  # type: ignore[misc]
     """Control4 fan entity."""
 
     def create_api_object(self):
@@ -134,7 +135,7 @@ class Control4Fan(Control4Entity, FanEntity):
         return 100/self._extra_state_attributes["speeds_count"]
 
     @property
-    def percentage(self) -> int | None:
+    def percentage(self) -> int | None:  # type: ignore[override]
         """Return the current speed as a percentage."""
         if "current_speed" in self._extra_state_attributes:
             return ranged_value_to_percentage(
@@ -157,16 +158,16 @@ class Control4Fan(Control4Entity, FanEntity):
 
 
     @property
-    def preset_modes(self):
+    def preset_modes(self):  # type: ignore[override]
         """Return a list of available modes for the fan."""
         return list(range(0, self._extra_state_attributes["speeds_count"]+1))
 
     @property
-    def preset_mode(self):
+    def preset_mode(self):  # type: ignore[override]
         """Return the current peset mode of this fan. """
         return self._extra_state_attributes["preset_speed"]
 
-    @property
+    @cached_property
     def supported_features(self) -> FanEntityFeature:
         """Flag supported features."""
         return FanEntityFeature.PRESET_MODE | FanEntityFeature.SET_SPEED | FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF

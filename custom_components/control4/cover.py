@@ -1,6 +1,7 @@
 """Platform for Control4 Covers (blinds/shades)."""
 from __future__ import annotations
 
+from functools import cached_property
 import logging
 from typing import Any
 
@@ -69,7 +70,7 @@ async def async_setup_entry(
 			item_name = str(item["name"])
 			item_id = item["id"]
 			item_area = item.get("roomName")
-			item_parent_id = item.get("parentId")
+			item_parent_id = item["parentId"]
 
 			item_manufacturer = None
 			item_device_name = None
@@ -107,7 +108,7 @@ async def async_setup_entry(
 	async_add_entities(entity_list, True)
 
 
-class Control4Cover(Control4Entity, CoverEntity):
+class Control4Cover(Control4Entity, CoverEntity):  # type: ignore[misc]
 	"""Control4 cover (blinds/shades) entity."""
 	_attr_assumed_state = True
 	_attr_supported_features = (
@@ -126,12 +127,12 @@ class Control4Cover(Control4Entity, CoverEntity):
 	async def async_added_to_hass(self):
 		await super().async_added_to_hass()
 
-	@property
+	@cached_property
 	def current_cover_position(self) -> int | None:
 		"""Unknown in stateless mode to keep both buttons enabled."""
 		return None
 
-	@property
+	@cached_property
 	def is_closed(self) -> bool | None:
 		"""Unknown in stateless mode to keep both buttons enabled."""
 		return None
@@ -154,13 +155,4 @@ class Control4Cover(Control4Entity, CoverEntity):
 		"""Stop the cover."""
 		c4_blind = self.create_api_object()
 		await c4_blind.stop()
-
-	@property
-	def supported_features(self) -> int:
-		"""Return supported features (stateless: no position slider)."""
-		return (
-			CoverEntityFeature.OPEN
-			| CoverEntityFeature.CLOSE
-			| CoverEntityFeature.STOP
-		)
 

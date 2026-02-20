@@ -77,7 +77,7 @@ async def async_setup_entry(
     async_add_entities(entity_list, True)
 
 
-class Control4Lock(Control4Entity, LockEntity):
+class Control4Lock(Control4Entity, LockEntity):  # type: ignore[misc]
     """Control4 lock entity."""
 
     def create_api_object(self):
@@ -109,7 +109,7 @@ class Control4Lock(Control4Entity, LockEntity):
         self.async_write_ha_state()
 
     @property
-    def is_locked(self):
+    def is_locked(self):  # type: ignore[override]
         """Return whether the lock is locked or unlocked. An open relay (0) typically means it is locked."""
         if "RelayState" in self._extra_state_attributes:
             return self._extra_state_attributes["RelayState"] == 0

@@ -1,6 +1,7 @@
 """Platform for Control4 Binary Sensor."""
 from __future__ import annotations
 
+from functools import cached_property
 import logging
 
 from homeassistant.components.binary_sensor import (
@@ -145,7 +146,7 @@ async def async_setup_entry(
                 item_area,
                 item_attributes,
                 item_device_class,
-                item_alarm_zone_id,
+                int(item_alarm_zone_id) if item_alarm_zone_id is not None else None,
                 item_proxy,
                 unique_id,
             )
@@ -154,7 +155,7 @@ async def async_setup_entry(
     async_add_entities(entity_list, True)
 
 
-class Control4BinarySensor(Control4Entity, BinarySensorEntity):
+class Control4BinarySensor(Control4Entity, BinarySensorEntity):  # type: ignore[misc]
     """Control4 alarm control panel entity."""
 
     def __init__(
@@ -169,8 +170,8 @@ class Control4BinarySensor(Control4Entity, BinarySensorEntity):
         device_id: int,
         device_area: str,
         device_attributes: dict,
-        device_class: str,
-        alarm_zone_id: int,
+        device_class: BinarySensorDeviceClass,
+        alarm_zone_id: int | None,
         proxy_type: str,
         unique_id: str,
     ) -> None:
@@ -250,7 +251,7 @@ class Control4BinarySensor(Control4Entity, BinarySensorEntity):
         self.async_write_ha_state()
 
     @property
-    def is_on(self):
+    def is_on(self):  # type: ignore[override]
         """Return true if the binary sensor is on."""
         # In Control4, True = closed/clear and False = open/not clear
         # For some reason, Control4 gives us ContactState on entity init,
@@ -265,13 +266,13 @@ class Control4BinarySensor(Control4Entity, BinarySensorEntity):
 
         return False
 
-    @property
-    def device_class(self):
+    @cached_property
+    def device_class(self) -> BinarySensorDeviceClass:
         """Return the class of this device, from component DEVICE_CLASSES."""
         return self._device_class
 
-    @property
-    def device_info(self):
+    @cached_property
+    def device_info(self):  # type: ignore[override]
         """Return info of parent Control4 device of entity."""
         # In Control4, binary sensors are not attached to a parent device.
         # Rather, they are attached to a room id.
