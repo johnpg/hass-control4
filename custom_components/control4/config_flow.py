@@ -82,12 +82,15 @@ class Control4Validator:
 
     async def connect_to_director(self) -> bool:
         """Test if we can connect to the local Control4 Director."""
+        if self.director_bearer_token is None:
+            _LOGGER.error("Director bearer token is not set")
+            return False
         try:
             director_session = aiohttp_client.async_get_clientsession(
                 self.hass, verify_ssl=False
             )
             director = C4Director(
-                self.host, self.director_bearer_token or "", director_session
+                self.host, self.director_bearer_token, director_session
             )
             await director.get_all_item_info()
             return True
@@ -167,10 +170,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
                 _LOGGER.debug("Reauthentication occurring")
                 existing_entry = await self.async_set_unique_id(formatted_mac)
-                if existing_entry is not None:
+                if existing_entry is None:
+                    errors["base"] = "reauth_failed"
+                else:
                     self.hass.config_entries.async_update_entry(existing_entry, data=data)
                     await self.hass.config_entries.async_reload(existing_entry.entry_id)
-                return self.async_abort(reason="reauth_successful")
+                    return self.async_abort(reason="reauth_successful")
 
         return self.async_show_form(
             step_id="user_reauth", data_schema=DATA_SCHEMA, errors=errors
