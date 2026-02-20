@@ -156,7 +156,7 @@ async def async_setup_entry(
 
 
 class Control4BinarySensor(Control4Entity, BinarySensorEntity):  # type: ignore[misc]
-    """Control4 alarm control panel entity."""
+    """Control4 binary sensor entity."""
 
     def __init__(
         self,
