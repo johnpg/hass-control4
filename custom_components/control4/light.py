@@ -254,11 +254,15 @@ class Control4Light(Control4Entity, LightEntity):  # type: ignore[misc]
 
     @property
     def min_color_temp_kelvin(self) -> int | None:  # type: ignore[override]
-        return self._ct_min if self._ct_min is not None else self._attr_min_color_temp_kelvin
+        if self._ct_min is not None:
+            return int(self._ct_min)
+        return self._attr_min_color_temp_kelvin
 
     @property
     def max_color_temp_kelvin(self) -> int | None:  # type: ignore[override]
-        return self._ct_max if self._ct_max is not None else self._attr_max_color_temp_kelvin
+        if self._ct_max is not None:
+            return int(self._ct_max)
+        return self._attr_max_color_temp_kelvin
 
     @property
     def effect(self) -> str | None:  # type: ignore[override]

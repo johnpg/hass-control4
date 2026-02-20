@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from functools import cached_property
-import json
 import logging
 
 from pyControl4.alarm import C4SecurityPanel
@@ -111,7 +110,7 @@ async def async_setup_entry(
                 try:
                     item_setup_info = await director.get_item_setup(item_id)
                     item_enabled = item_setup_info.get("setup", {}).get("enabled", True)
-                except (KeyError, json.JSONDecodeError):
+                except (KeyError, TypeError):
                     _LOGGER.debug(
                         "No setup info available for device %s, defaulting to enabled",
                         item_name,

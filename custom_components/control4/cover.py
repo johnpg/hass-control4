@@ -1,7 +1,6 @@
 """Platform for Control4 Covers (blinds/shades)."""
 from __future__ import annotations
 
-from functools import cached_property
 import logging
 from typing import Any
 
@@ -127,13 +126,13 @@ class Control4Cover(Control4Entity, CoverEntity):  # type: ignore[misc]
 	async def async_added_to_hass(self):
 		await super().async_added_to_hass()
 
-	@cached_property
-	def current_cover_position(self) -> int | None:
+	@property
+	def current_cover_position(self) -> int | None:  # type: ignore[override]
 		"""Unknown in stateless mode to keep both buttons enabled."""
 		return None
 
-	@cached_property
-	def is_closed(self) -> bool | None:
+	@property
+	def is_closed(self) -> bool | None:  # type: ignore[override]
 		"""Unknown in stateless mode to keep both buttons enabled."""
 		return None
 

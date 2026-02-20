@@ -160,12 +160,12 @@ class Control4Fan(Control4Entity, FanEntity):  # type: ignore[misc]
     @property
     def preset_modes(self):  # type: ignore[override]
         """Return a list of available modes for the fan."""
-        return list(range(0, self._extra_state_attributes["speeds_count"]+1))
+        return [str(x) for x in range(0, self._extra_state_attributes["speeds_count"]+1)]
 
     @property
     def preset_mode(self):  # type: ignore[override]
-        """Return the current peset mode of this fan. """
-        return self._extra_state_attributes["preset_speed"]
+        """Return the current preset mode of this fan."""
+        return str(self._extra_state_attributes["preset_speed"])
 
     @cached_property
     def supported_features(self) -> FanEntityFeature:
@@ -179,7 +179,12 @@ class Control4Fan(Control4Entity, FanEntity):  # type: ignore[misc]
 
         c4_fan = self.create_api_object()
 
-        if self._extra_state_attributes["preset_speed"] != 0:
+        if percentage is not None:
+            speed = int(percentage_to_ranged_value((1, self._extra_state_attributes["speeds_count"]), percentage))
+            await c4_fan.set_speed(speed)
+        elif preset_mode is not None:
+            await c4_fan.set_speed(int(preset_mode))
+        elif self._extra_state_attributes["preset_speed"] != 0:
             await c4_fan.set_speed(self._extra_state_attributes["preset_speed"])
         else:
             await c4_fan.set_speed(1)
