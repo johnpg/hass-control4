@@ -253,6 +253,7 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
             flags |= AlarmControlPanelEntityFeature.ARM_CUSTOM_BYPASS
         if not self.entry_data[CONF_ALARM_VACATION_MODE] == DEFAULT_ALARM_VACATION_MODE:
             flags |= AlarmControlPanelEntityFeature.ARM_VACATION
+        flags |= AlarmControlPanelEntityFeature.TRIGGER
         return flags
 
     @property
@@ -315,6 +316,11 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
         """Send disarm command."""
         c4_alarm = self.create_api_object()
         await c4_alarm.setDisarm(code)
+
+    async def async_alarm_trigger(self, code=None):
+        """Send trigger/emergency command."""
+        c4_alarm = self.create_api_object()
+        await c4_alarm.trigger_emergency("Police")
 
     async def send_alarm_keystrokes(self, keystrokes):
         """Send custom keystrokes."""
