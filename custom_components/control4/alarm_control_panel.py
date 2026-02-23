@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import json
+from functools import cached_property
 import logging
 
 from pyControl4.alarm import C4SecurityPanel
@@ -10,6 +10,8 @@ import voluptuous
 
 from homeassistant.components.alarm_control_panel import (
     AlarmControlPanelEntity,
+)
+from homeassistant.components.alarm_control_panel.const import (
     AlarmControlPanelEntityFeature,
     AlarmControlPanelState,
     CodeFormat,
@@ -74,11 +76,12 @@ async def async_setup_entry(
     """Set up Control4 alarm control panel from a config entry."""
     # Register alarm_control_panel specific service
     platform = entity_platform.current_platform.get()
-    platform.async_register_entity_service(
-        "send_alarm_keystrokes",
-        {voluptuous.Required("keystrokes"): cv.string},
-        "send_alarm_keystrokes",
-    )
+    if platform is not None:
+        platform.async_register_entity_service(
+            "send_alarm_keystrokes",
+            {voluptuous.Required("keystrokes"): cv.string},
+            "send_alarm_keystrokes",
+        )
 
     entry_data = hass.data[DOMAIN][entry.entry_id]
 
@@ -105,10 +108,9 @@ async def async_setup_entry(
                 item_model = None
 
                 try:
-                    item_setup_info = await director.getItemSetup(item_id)
-                    item_setup_info = json.loads(item_setup_info)
+                    item_setup_info = await director.get_item_setup(item_id)
                     item_enabled = item_setup_info.get("setup", {}).get("enabled", True)
-                except (KeyError, json.JSONDecodeError):
+                except (KeyError, TypeError):
                     _LOGGER.debug(
                         "No setup info available for device %s, defaulting to enabled",
                         item_name,
@@ -151,7 +153,7 @@ async def async_setup_entry(
     async_add_entities(entity_list, True)
 
 
-class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
+class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):  # type: ignore[misc]
     """Control4 alarm control panel entity."""
 
     def __init__(
@@ -226,20 +228,20 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
         """
         return C4SecurityPanel(self.entry_data[CONF_DIRECTOR], self._idx)
 
-    @property
+    @cached_property
     def entity_registry_enabled_default(self) -> bool:
         """Return if the entity should be enabled when first added to the entity registry."""
         return self._is_enabled
 
-    @property
+    @cached_property
     def code_format(self):
         """Regex for code format or None if no code is required."""
         return CodeFormat.NUMBER
 
-    @property
-    def supported_features(self) -> int:
+    @cached_property
+    def supported_features(self) -> AlarmControlPanelEntityFeature:
         """Flag supported features."""
-        flags = 0
+        flags = AlarmControlPanelEntityFeature(0)
         if not self.entry_data[CONF_ALARM_AWAY_MODE] == DEFAULT_ALARM_AWAY_MODE:
             flags |= AlarmControlPanelEntityFeature.ARM_AWAY
         if not self.entry_data[CONF_ALARM_HOME_MODE] == DEFAULT_ALARM_HOME_MODE:
@@ -256,7 +258,7 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
         return flags
 
     @property
-    def alarm_state(self) -> AlarmControlPanelState | None:
+    def alarm_state(self) -> AlarmControlPanelState | None:  # type: ignore[override]
         """Return the state of the device."""
         partition_state = self.extra_state_attributes.get(CONTROL4_PARTITION_STATE_VAR)
         if partition_state == CONTROL4_EXIT_DELAY_STATE:
@@ -289,35 +291,35 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):
     async def async_alarm_arm_away(self, code=None):
         """Send arm away command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_AWAY_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_AWAY_MODE])
 
     async def async_alarm_arm_home(self, code=None):
         """Send arm home command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_HOME_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_HOME_MODE])
 
     async def async_alarm_arm_night(self, code=None):
         """Send arm night command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_NIGHT_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_NIGHT_MODE])
 
     async def async_alarm_arm_custom_bypass(self, code=None):
         """Send arm custom bypass command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_CUSTOM_BYPASS_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_CUSTOM_BYPASS_MODE])
 
     async def async_alarm_arm_vacation(self, code=None):
         """Send arm vacation command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setArm(code, self.entry_data[CONF_ALARM_VACATION_MODE])
+        await c4_alarm.set_arm(code or "", self.entry_data[CONF_ALARM_VACATION_MODE])
 
     async def async_alarm_disarm(self, code=None):
         """Send disarm command."""
         c4_alarm = self.create_api_object()
-        await c4_alarm.setDisarm(code)
+        await c4_alarm.set_disarm(code or "")
 
     async def send_alarm_keystrokes(self, keystrokes):
         """Send custom keystrokes."""
         c4_alarm = self.create_api_object()
         for key in keystrokes:
-            await c4_alarm.sendKeyPress(key)
+            await c4_alarm.send_key_press(key)

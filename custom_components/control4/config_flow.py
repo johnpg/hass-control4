@@ -66,15 +66,15 @@ class Control4Validator:
             account_session = aiohttp_client.async_get_clientsession(self.hass)
             account = C4Account(self.username, self.password, account_session)
             # Authenticate with Control4 account
-            await account.getAccountBearerToken()
+            await account.get_account_bearer_token()
 
             # Get controller name
-            account_controllers = await account.getAccountControllers()
+            account_controllers = await account.get_account_controllers()
             self.controller_unique_id = account_controllers["controllerCommonName"]
 
             # Get bearer token to communicate with controller locally
             self.director_bearer_token = (
-                await account.getDirectorBearerToken(self.controller_unique_id)
+                await account.get_director_bearer_token(self.controller_unique_id)
             )["token"]
             return True
         except (Unauthorized, NotFound):
@@ -82,6 +82,9 @@ class Control4Validator:
 
     async def connect_to_director(self) -> bool:
         """Test if we can connect to the local Control4 Director."""
+        if self.director_bearer_token is None:
+            _LOGGER.error("Director bearer token is not set")
+            return False
         try:
             director_session = aiohttp_client.async_get_clientsession(
                 self.hass, verify_ssl=False
@@ -89,7 +92,7 @@ class Control4Validator:
             director = C4Director(
                 self.host, self.director_bearer_token, director_session
             )
-            await director.getAllItemInfo()
+            await director.get_all_item_info()
             return True
         except (Unauthorized, ClientError, asyncioTimeoutError):
             _LOGGER.error("Failed to connect to the Control4 controller")
@@ -130,6 +133,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             errors, controller_unique_id = await self._validate_input(user_input)
             if not errors:
+                assert controller_unique_id is not None
                 mac = (controller_unique_id.split("_", 3))[2]
                 formatted_mac = format_mac(mac)
                 data = {
@@ -155,6 +159,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             errors, controller_unique_id = await self._validate_input(user_input)
             if not errors:
+                assert controller_unique_id is not None
                 mac = (controller_unique_id.split("_", 3))[2]
                 formatted_mac = format_mac(mac)
                 data = {
@@ -165,9 +170,12 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
                 _LOGGER.debug("Reauthentication occurring")
                 existing_entry = await self.async_set_unique_id(formatted_mac)
-                self.hass.config_entries.async_update_entry(existing_entry, data=data)
-                await self.hass.config_entries.async_reload(existing_entry.entry_id)
-                return self.async_abort(reason="reauth_successful")
+                if existing_entry is None:
+                    errors["base"] = "reauth_failed"
+                else:
+                    self.hass.config_entries.async_update_entry(existing_entry, data=data)
+                    await self.hass.config_entries.async_reload(existing_entry.entry_id)
+                    return self.async_abort(reason="reauth_successful")
 
         return self.async_show_form(
             step_id="user_reauth", data_schema=DATA_SCHEMA, errors=errors

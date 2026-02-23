@@ -1,12 +1,11 @@
 """Platform for Control4 Fan."""
 from __future__ import annotations
 
+from functools import cached_property
 import logging
+from typing import Any
 
 from pyControl4.fan import C4Fan
-
-import json
-from typing import Any
 
 from homeassistant.components.fan import (
     FanEntity,
@@ -65,8 +64,7 @@ async def async_setup_entry(
                         item_device_name = parent_item["name"]
                         item_model = parent_item["model"]
 
-                item_setup_info = await director.getItemSetup(item_id)
-                item_setup_info = json.loads(item_setup_info)
+                item_setup_info = await director.get_item_setup(item_id)
                 _LOGGER.debug("Fan Setup: %s",str(item_setup_info))
                 if 'fan_setup' in item_setup_info:
                     setup_attributes = item_setup_info['fan_setup']
@@ -101,7 +99,7 @@ async def async_setup_entry(
     async_add_entities(entity_list, True)
 
 
-class Control4Fan(Control4Entity, FanEntity):
+class Control4Fan(Control4Entity, FanEntity):  # type: ignore[misc]
     """Control4 fan entity."""
 
     def create_api_object(self):
@@ -137,7 +135,7 @@ class Control4Fan(Control4Entity, FanEntity):
         return 100/self._extra_state_attributes["speeds_count"]
 
     @property
-    def percentage(self) -> int | None:
+    def percentage(self) -> int | None:  # type: ignore[override]
         """Return the current speed as a percentage."""
         if "current_speed" in self._extra_state_attributes:
             return ranged_value_to_percentage(
@@ -160,51 +158,56 @@ class Control4Fan(Control4Entity, FanEntity):
 
 
     @property
-    def preset_modes(self):
+    def preset_modes(self):  # type: ignore[override]
         """Return a list of available modes for the fan."""
-        return list(range(0, self._extra_state_attributes["speeds_count"]+1))
+        return [str(x) for x in range(0, self._extra_state_attributes["speeds_count"]+1)]
 
     @property
-    def preset_mode(self):
-        """Return the current peset mode of this fan. """
-        return self._extra_state_attributes["preset_speed"]
+    def preset_mode(self):  # type: ignore[override]
+        """Return the current preset mode of this fan."""
+        return str(self._extra_state_attributes["preset_speed"])
 
-    @property
+    @cached_property
     def supported_features(self) -> FanEntityFeature:
         """Flag supported features."""
         return FanEntityFeature.PRESET_MODE | FanEntityFeature.SET_SPEED | FanEntityFeature.TURN_ON | FanEntityFeature.TURN_OFF
 
 
-    async def async_turn_on(self, speed: Optional[str] = None, percentage: Optional[int] = None, preset_mode: Optional[str] = None, **kwargs: Any) -> None:
+    async def async_turn_on(self, percentage: int | None = None, preset_mode: str | None = None, **kwargs: Any) -> None:
         """Turn the entity on."""
         _LOGGER.debug("Turn ON Fan Attributes: %s",str(self._extra_state_attributes))
 
         c4_fan = self.create_api_object()
 
-        if self._extra_state_attributes["preset_speed"] != 0:
-            await c4_fan.setSpeed(self._extra_state_attributes["preset_speed"])
+        if percentage is not None:
+            speed = int(percentage_to_ranged_value((1, self._extra_state_attributes["speeds_count"]), percentage))
+            await c4_fan.set_speed(speed)
+        elif preset_mode is not None:
+            await c4_fan.set_speed(int(preset_mode))
+        elif self._extra_state_attributes["preset_speed"] != 0:
+            await c4_fan.set_speed(self._extra_state_attributes["preset_speed"])
         else:
-            await c4_fan.setSpeed(1)
+            await c4_fan.set_speed(1)
 
     async def async_set_preset_mode(self, preset_mode: str) -> None:
         """Set the preset mode, the speed the fan comes on to."""
         c4_fan = self.create_api_object()
-        await c4_fan.setPreset(preset_mode)
+        await c4_fan.set_preset(int(preset_mode))
 
     async def async_set_percentage(self, percentage: int) -> None:
         """Set a percentage speed for the fan comes on to."""
         c4_fan = self.create_api_object()
-        speed = percentage_to_ranged_value((1, self._extra_state_attributes["speeds_count"]), percentage)
-        await c4_fan.setSpeed(speed)
+        speed = int(percentage_to_ranged_value((1, self._extra_state_attributes["speeds_count"]), percentage))
+        await c4_fan.set_speed(speed)
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the entity off."""
         c4_fan = self.create_api_object()
-        await c4_fan.setSpeed(0)
+        await c4_fan.set_speed(0)
 
     async def async_toggle(self, **kwargs: Any) -> None:
         """Toggle the fan."""
-        if self.is_on():
+        if self.is_on:
             await self.async_turn_off()
         else:
             await self.async_turn_on()

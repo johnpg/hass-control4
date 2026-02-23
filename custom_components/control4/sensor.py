@@ -115,7 +115,7 @@ async def async_setup_entry(
         async_add_entities(entities, True)
 
 
-class Control4AttrSensor(Control4Entity, SensorEntity):
+class Control4AttrSensor(Control4Entity, SensorEntity):  # type: ignore[misc]
     """Sensor exposing a Control4 device attribute via WebSocket."""
 
     _attr_has_entity_name = True
@@ -161,12 +161,13 @@ class Control4AttrSensor(Control4Entity, SensorEntity):
         await super().async_added_to_hass()
         # The WebSocket is already handled by the parent Control4Entity
         # No further action required
+
     @property
-    def available(self) -> bool:
+    def available(self) -> bool:  # type: ignore[override]
         return super().available and (self._sm.key in self.extra_state_attributes)
 
     @property
-    def native_value(self):
+    def native_value(self):  # type: ignore[override]
         """Retrieve the value from extra_state_attributes (updated by WebSocket)."""
         raw = self.extra_state_attributes.get(self._sm.key)
         if raw is None:
