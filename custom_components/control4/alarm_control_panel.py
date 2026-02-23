@@ -134,6 +134,9 @@ async def async_setup_entry(
 
         item_attributes = await director_get_entry_variables(hass, entry, item_id)
 
+        c4_alarm = C4SecurityPanel(director, item_id)
+        item_emergency_types = await c4_alarm.get_emergency_types()
+
         entity_list.append(
             Control4AlarmControlPanel(
                 entry_data,
@@ -147,6 +150,7 @@ async def async_setup_entry(
                 item_area,
                 item_attributes,
                 item_enabled,
+                item_emergency_types,
             )
         )
 
@@ -169,6 +173,7 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):  # typ
         device_area: str,
         device_attributes: dict,
         is_enabled: bool,
+        emergency_types: list[str],
     ) -> None:
         """Initialize Control4 alarm control panel entity."""
         super().__init__(
@@ -184,6 +189,7 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):  # typ
             device_attributes,
         )
         self._is_enabled = is_enabled
+        self._emergency_types = emergency_types
         self._extra_state_attributes["zone_state"] = {}
 
     async def _update_callback(self, device, message):
@@ -255,6 +261,8 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):  # typ
             flags |= AlarmControlPanelEntityFeature.ARM_CUSTOM_BYPASS
         if not self.entry_data[CONF_ALARM_VACATION_MODE] == DEFAULT_ALARM_VACATION_MODE:
             flags |= AlarmControlPanelEntityFeature.ARM_VACATION
+        if self._emergency_types:
+            flags |= AlarmControlPanelEntityFeature.TRIGGER
         return flags
 
     @property
@@ -317,6 +325,18 @@ class Control4AlarmControlPanel(Control4Entity, AlarmControlPanelEntity):  # typ
         """Send disarm command."""
         c4_alarm = self.create_api_object()
         await c4_alarm.set_disarm(code or "")
+
+    async def async_alarm_trigger(self, code=None):
+        """Send trigger/emergency command."""
+        if not self._emergency_types:
+            return
+        c4_alarm = self.create_api_object()
+        preferred_order = ["Police", "Fire", "Medical", "Panic"]
+        emergency_type = next(
+            (t for t in preferred_order if t in self._emergency_types),
+            self._emergency_types[0],
+        )
+        await c4_alarm.trigger_emergency(emergency_type)
 
     async def send_alarm_keystrokes(self, keystrokes):
         """Send custom keystrokes."""
